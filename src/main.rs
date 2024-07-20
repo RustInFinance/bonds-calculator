@@ -1,3 +1,5 @@
+use chrono::{Local, NaiveDate, ParseError, DateTime};
+
 fn calculate_yield(pv: f64, payments : &Vec<f64>, num_payments_per_year : u32) -> Result<f64,&'static str>{
 
     let rounded_pv = round2(pv);
@@ -50,19 +52,25 @@ pv: f64, maturity_val: f64, coupon_interest : f64, years_to_mature: u32, payment
 
     let mut payments : Vec<f64> = vec![];
     let num_days_in_period = 360 / payments_per_year;
-    let remaining_period_ratio = 1.0; // TODO    
+
+    let today_date = NaiveDate::parse_from_str(today, "%Y-%m-%d").map_err(|_| "Error converting todays date")?;
+    let payment_date = NaiveDate::parse_from_str(next_payment_date, "%Y-%m-%d").map_err(|_| "Error converting next payment date")?;
+
+    let days_to_next_payment = payment_date.signed_duration_since(today_date).num_days();
+
+    let remaining_period_ratio = days_to_next_payment as f64/num_days_in_period as f64;
 
     let payment_per_period = maturity_val*coupon_interest/payments_per_year as f64/100.0;
 
     for _i in 0..periods_to_mature {
-         payments.push(payment_per_period/(1.0f64 + candidate_yield/100.0).powf(remaining_period_ratio));
+         payments.push(payment_per_period);
     }
 
     // 
     let compute_gain = |payments : &Vec<f64>, maturity_val : f64, candidate_yield : f64| -> f64 {
 
         let mut total_gain = payments.iter().enumerate().fold(0.0, |mut gain, (i,v)| {
-            gain += v/((1.0f64 + candidate_yield/100.0).powf(i as f64));
+            gain += v/((1.0f64 + candidate_yield/100.0).powf(i as f64 + remaining_period_ratio));
             gain
         }); 
         total_gain += maturity_val/(1.0 + candidate_yield/100.0).powf(payments.len() as f64 - 1.0 + remaining_period_ratio);
@@ -127,15 +135,12 @@ fn get_current_yield(pv: f64, maturity_val: f64, coupon_interest : f64) -> Resul
    Ok(round2(coupon_interest*maturity_val/pv)) 
 }
 
-fn main() {
-    println!("Hello, world!");
-        let payments: Vec<f64> = vec![
-            (100.0),
-            (100.0),
-            (100.0),
-            (1000.0),
-        ];
-        calculate_yield(903.10,&payments, 1);
+fn main() -> Result<(),&'static str>{
+    let now: DateTime<Local> = Local::now();
+    let date_str = now.format("%Y-%m-%d").to_string();
+    let effective_annual_yield = calculate_yield_to_maturity(769.42,1000.0,7.0,15,2, &date_str,"2024-07-29")?;
+    println!("Yield to Maturity(as of {date_str}): {effective_annual_yield}");
+    Ok(())
 }
 
 #[cfg(test)]
@@ -168,7 +173,7 @@ mod tests {
     }
     #[test]
     fn test_yield_to_maturity_semiannual() -> Result<(), &'static str> {
-        assert_eq!(calculate_yield_to_maturity(769.42,1000.0,7.0,15,2, "12 Apr 2024","20 Jul 2024"), Ok(10.25));
+        assert_eq!(calculate_yield_to_maturity(769.42,1000.0,7.0,15,2, "2024-01-01","2024-06-29"), Ok(10.25));
         Ok(())
     }
     #[test]
