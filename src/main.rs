@@ -62,10 +62,10 @@ pv: f64, maturity_val: f64, coupon_interest : f64, years_to_mature: u32, payment
     let compute_gain = |payments : &Vec<f64>, maturity_val : f64, candidate_yield : f64| -> f64 {
 
         let mut total_gain = payments.iter().enumerate().fold(0.0, |mut gain, (i,v)| {
-            gain += v/(1.0f64 + candidate_yield/100.0).powf(i as f64);
+            gain += v/((1.0f64 + candidate_yield/100.0).powf(i as f64));
             gain
         }); 
-        total_gain += maturity_val/(1.0 + candidate_yield/100.0).powf(payments.len() as f64);
+        total_gain += maturity_val/(1.0 + candidate_yield/100.0).powf(payments.len() as f64 - 1.0 + remaining_period_ratio);
         total_gain
     };
 
@@ -77,7 +77,7 @@ pv: f64, maturity_val: f64, coupon_interest : f64, years_to_mature: u32, payment
        for candy in (miny*100.0) as u32.. ((maxy+1.0)*100.0) as u32 {
            let candy : f64 = candy as f64/100.0;
            let gain = round2(compute_gain(payments, maturity_val, candy));           let new_margin = (gain - rounded_pv).abs();
-           println!("aproxy candidate yield: {candy}, present value: {gain}");
+           println!("aproxy candidate yield: {candy}, calculated present value: {gain}, actual present value: {pv}");
            if new_margin < margin {
                margin = new_margin;
                aproxy_yield = candy;
@@ -114,7 +114,7 @@ pv: f64, maturity_val: f64, coupon_interest : f64, years_to_mature: u32, payment
     }
     
     //let effective_annual_yield = candidate_yield; 
-    let effective_annual_yield = 100.0*((1.0 + candidate_yield/100.0).powf(payments_per_year as f64) - 1.0);
+    let effective_annual_yield = 100.0*((1.0 + candidate_yield/100.0).powf(payments_per_year as f64 - 1.0 + remaining_period_ratio) - 1.0);
     Ok(round2(effective_annual_yield))
 }
 
