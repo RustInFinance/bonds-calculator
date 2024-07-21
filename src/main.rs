@@ -17,7 +17,7 @@ fn calculate_yield(pv: f64, payments : &Vec<f64>, num_payments_per_year : u32) -
         }); 
         
         let rounded_total_gain = round2(total_gain);
-        println!("candidate yield: {candidate_yield}, present value: {rounded_total_gain}");
+        log::info!("candidate yield: {candidate_yield}, present value: {rounded_total_gain}");
         if rounded_total_gain == rounded_pv {
           run = false;
         } else if rounded_total_gain > rounded_pv {
@@ -81,17 +81,17 @@ pv: f64, maturity_val: f64, coupon_interest : f64, years_to_mature: u32, payment
        let rounded_pv = round2(pv);
        let mut margin = rounded_pv;
        let mut aproxy_yield = miny;
-       println!("aproxy miny={} maxy={}", miny*100.0,maxy*100.0);
+       log::info!("aproxy miny={} maxy={}", miny*100.0,maxy*100.0);
        for candy in (miny*100.0) as u32.. ((maxy+1.0)*100.0) as u32 {
            let candy : f64 = candy as f64/100.0;
            let gain = round2(compute_gain(payments, maturity_val, candy));           let new_margin = (gain - rounded_pv).abs();
-           println!("aproxy candidate yield: {candy}, calculated present value: {gain}, actual present value: {pv}");
+           log::info!("aproxy candidate yield: {candy}, calculated present value: {gain}, actual present value: {pv}");
            if new_margin < margin {
                margin = new_margin;
                aproxy_yield = candy;
            }
        }
-       println!("Final aproxy yield: {aproxy_yield}");
+       log::info!("Final aproxy yield: {aproxy_yield}");
        aproxy_yield
     };
 
@@ -100,7 +100,7 @@ pv: f64, maturity_val: f64, coupon_interest : f64, years_to_mature: u32, payment
         let total_gain = compute_gain(&payments,maturity_val,candidate_yield);
 
         let rounded_total_gain = round2(total_gain);
-        println!("candidate yield: {candidate_yield}, present value: {rounded_total_gain}");
+        log::info!("candidate yield: {candidate_yield}, present value: {rounded_total_gain}");
         if rounded_total_gain == rounded_pv {
           run = false;
         } else if rounded_total_gain > rounded_pv {
@@ -136,6 +136,14 @@ fn get_current_yield(pv: f64, maturity_val: f64, coupon_interest : f64) -> Resul
 }
 
 fn main() -> Result<(),&'static str>{
+
+    // Make a default logging level: error
+    if std::env::var("RUST_LOG").is_err() {
+        std::env::set_var("RUST_LOG", "error")
+    }
+    simple_logger::SimpleLogger::new().env().init().unwrap();
+
+
     let now: DateTime<Local> = Local::now();
     let date_str = now.format("%Y-%m-%d").to_string();
     let effective_annual_yield = calculate_yield_to_maturity(769.42,1000.0,7.0,15,2, &date_str,"2024-07-29")?;
