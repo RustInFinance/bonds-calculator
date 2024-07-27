@@ -1,3 +1,5 @@
+// TODO: implement total return 
+
 use chrono::{Local, NaiveDate, ParseError, DateTime};
 
 fn calculate_yield(pv: f64, payments : &Vec<f64>, num_payments_per_year : u32) -> Result<f64,&'static str>{
@@ -40,7 +42,7 @@ fn calculate_yield(pv: f64, payments : &Vec<f64>, num_payments_per_year : u32) -
 }
 
 fn calculate_yield_to_maturity(
-pv: f64, maturity_val: f64, coupon_interest : f64, years_to_mature: u32, payments_per_year : u32, today: &str, next_payment_date : &str) -> Result<f64,&'static str>{
+pv: f64, maturity_val: f64, coupon_interest : f64, payments_per_year : u32, today: &str, next_payment_date : &str, maturity_date : &str) -> Result<f64,&'static str>{
 
     let rounded_pv = round2(pv);
     // min and max 
@@ -48,17 +50,23 @@ pv: f64, maturity_val: f64, coupon_interest : f64, years_to_mature: u32, payment
     let mut maxy : f64 = 20.0;
     let mut candidate_yield = (maxy+miny)/2.0;  // Starting point
 
-    let periods_to_mature = years_to_mature*payments_per_year;
-
-    let mut payments : Vec<f64> = vec![];
-    let num_days_in_period = 360 / payments_per_year;
 
     let today_date = NaiveDate::parse_from_str(today, "%Y-%m-%d").map_err(|_| "Error converting todays date")?;
     let payment_date = NaiveDate::parse_from_str(next_payment_date, "%Y-%m-%d").map_err(|_| "Error converting next payment date")?;
+    let maturity_date = NaiveDate::parse_from_str(maturity_date, "%Y-%m-%d").map_err(|_| "Error converting maturity date")?;
+
+    let days_to_mature = maturity_date.signed_duration_since(today_date).num_days() as u32;
+    let num_days_in_period = 366 / payments_per_year;
+    let periods_to_mature = (days_to_mature as f64/num_days_in_period as f64).floor() as u32;
+    log::info!("days_to_mature: {days_to_mature}, num_days_in_period: {num_days_in_period}, periods_to_mature: {periods_to_mature}");
+    log::info!("periods_to_mature: {periods_to_mature}");
+
+    let mut payments : Vec<f64> = vec![];
 
     let days_to_next_payment = payment_date.signed_duration_since(today_date).num_days();
 
     let remaining_period_ratio = days_to_next_payment as f64/num_days_in_period as f64;
+    log::info!("Days to next payment: {days_to_next_payment} remaining_period_ratio: {remaining_period_ratio}");
 
     let payment_per_period = maturity_val*coupon_interest/payments_per_year as f64/100.0;
 
@@ -144,9 +152,12 @@ fn main() -> Result<(),&'static str>{
     simple_logger::SimpleLogger::new().env().init().unwrap();
 
 
+    //let effective_annual_yield = calculate_yield_to_maturity(903.10,1000.0,10.0,1,"2024-09-02","2025-09-01","2028-09-01")?;
+    let effective_annual_yield =  calculate_yield_to_maturity(769.42,1000.0,7.0,2,"2021-03-02","2021-09-01","2036-09-01")?;
+
     let now: DateTime<Local> = Local::now();
     let date_str = now.format("%Y-%m-%d").to_string();
-    let effective_annual_yield = calculate_yield_to_maturity(769.42,1000.0,7.0,15,2, &date_str,"2024-07-29")?;
+    //let effective_annual_yield = calculate_yield_to_maturity(769.42,1000.0,7.0,2,"2024-07-22","2024-09-01","2036-09-01")?;
     println!("Yield to Maturity(as of {date_str}): {effective_annual_yield}");
     Ok(())
 }
@@ -180,8 +191,18 @@ mod tests {
         Ok(())
     }
     #[test]
+    fn test_yield_to_maturity_full_semiannual() -> Result<(), &'static str> {
+        assert_eq!(calculate_yield_to_maturity(769.42,1000.0,7.0,2,"2020-03-02","2020-09-01","2035-09-01"), Ok(10.25));
+        Ok(())
+    }
+    #[test]
     fn test_yield_to_maturity_semiannual() -> Result<(), &'static str> {
-        assert_eq!(calculate_yield_to_maturity(769.42,1000.0,7.0,15,2, "2024-01-01","2024-06-29"), Ok(10.25));
+        assert_eq!(calculate_yield_to_maturity(769.42,1000.0,7.0,2,"2024-07-22","2024-09-01","2036-09-01"), Ok(6.76));
+        Ok(())
+    }
+    #[test]
+    fn test_yield_to_maturity_annual() -> Result<(), &'static str> {
+//        assert_eq!(calculate_yield_to_maturity(903.10,1000.0,10.0,1,"2024-09-01","2025-09-01","2028-09-01"), Ok(11.00));
         Ok(())
     }
     #[test]
