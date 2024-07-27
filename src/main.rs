@@ -156,7 +156,9 @@ pv: f64, maturity_val: f64, coupon_interest : f64, payments_per_year : u32, toda
         }
     }
     
-    let effective_annual_yield = 100.0*((1.0 + candidate_yield/100.0).powf(payments_per_year as f64 - 1.0 + remaining_period_ratio) - 1.0);
+    //let effective_annual_yield = 100.0*((1.0 + candidate_yield/100.0).powf(payments_per_year as f64 - 1.0 + remaining_period_ratio) - 1.0);
+    let effective_annual_yield = candidate_yield*payments_per_year as f64; 
+    log::info!("effective_annual_yield: {effective_annual_yield}");
     Ok(round2(effective_annual_yield))
 }
 
@@ -203,6 +205,7 @@ fn main() -> Result<(),&'static str>{
    analyze_bonds("FINLAND 0.5% 01/26",963.6788*1.0025,1000.0,0.5,1,"2025-04-15","2026-04-15")?;
    analyze_bonds("FRANCE 2.5% 05/30",0.9864*1.0025,1.0,2.5,1,"2025-05-25","2030-05-25")?;
 
+   analyze_bonds("MERCEDES-BENZ 2.0% 08/26",994.5898*1.0025,1000.0,2.0,1,"2024-08-22","2026-08-22")?;
 
     Ok(())
 }
@@ -237,17 +240,17 @@ mod tests {
     }
     #[test]
     fn test_yield_to_maturity_full_semiannual() -> Result<(), &'static str> {
-        assert_eq!(calculate_yield_to_maturity(769.42,1000.0,7.0,2,"2020-03-02","2020-09-01","2035-09-01"), Ok(10.19));
+        assert_eq!(calculate_yield_to_maturity(769.42,1000.0,7.0,2,"2020-03-02","2020-09-01","2035-09-01"), Ok(9.94));
         Ok(())
     }
     #[test]
     fn test_yield_to_maturity_semiannual() -> Result<(), &'static str> {
-        assert_eq!(calculate_yield_to_maturity(769.42,1000.0,7.0,2,"2024-07-22","2024-09-01","2036-09-01"), Ok(6.7));
+        assert_eq!(calculate_yield_to_maturity(769.42,1000.0,7.0,2,"2024-07-22","2024-09-01","2036-09-01"), Ok(10.88));
         Ok(())
     }
     #[test]
     fn test_yield_to_maturity_annual() -> Result<(), &'static str> {
-        assert_eq!(calculate_yield_to_maturity(1039.3543,1000.0,5.25,1,"2024-07-27","2025-01-20","2025-01-20"), Ok(1.26));
+        assert_eq!(calculate_yield_to_maturity(1039.3543,1000.0,5.25,1,"2024-07-27","2025-01-20","2025-01-20"), Ok(2.63));
         Ok(())
     }
     #[test]
