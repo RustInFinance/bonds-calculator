@@ -2,6 +2,12 @@
 
 use chrono::{Local, NaiveDate, ParseError, DateTime};
 
+fn round(x : f64) -> f64 {
+    (x * 100.0).round() / 100.0
+}
+
+
+
 fn calculate_yield(pv: f64, payments : &Vec<f64>, num_payments_per_year : u32) -> Result<f64,&'static str>{
 
     let rounded_pv = round2(pv);
@@ -41,7 +47,17 @@ fn calculate_yield(pv: f64, payments : &Vec<f64>, num_payments_per_year : u32) -
     Ok(round2(effective_annual_yield))
 }
 
-fn calculate_total_return_no_reinvestment(pv: f64, maturity_val: f64, coupon_interest : f64, payments_per_year : u32, today: &str, next_payment_date : &str, maturity_date : &str) -> Result<(f64,f64,f64),&'static str>{
+fn calculate_interest_on_interest(annual_annuity : f64, annual_investement_rate : f64, investements_per_year : u32, total_num_investements : u32) -> f64 {
+    
+    let periodic_annuity = annual_annuity/investements_per_year as f64;
+    let periodic_investment_rate = annual_investement_rate/100.0/investements_per_year as f64;
+    let total_capital = periodic_annuity*(((1.0 + periodic_investment_rate).powf(total_num_investements as f64) - 1.0)/periodic_investment_rate);
+
+    total_capital - periodic_annuity*total_num_investements as f64
+}
+
+
+fn calculate_total_return(pv: f64, maturity_val: f64, coupon_interest : f64, reinvestment_rate : Option<f64>,payments_per_year : u32, today: &str, next_payment_date : &str, maturity_date : &str) -> Result<(f64,f64,f64),&'static str>{
     let today_date = NaiveDate::parse_from_str(today, "%Y-%m-%d").map_err(|_| "Error converting todays date")?;
     let payment_date = NaiveDate::parse_from_str(next_payment_date, "%Y-%m-%d").map_err(|_| "Error converting next payment date")?;
     let maturity_date = NaiveDate::parse_from_str(maturity_date, "%Y-%m-%d").map_err(|_| "Error converting maturity date")?;
@@ -67,6 +83,9 @@ fn calculate_total_return_no_reinvestment(pv: f64, maturity_val: f64, coupon_int
     let total_return = payments.iter().sum();
     Ok((pv,total_return - pv,total_return))
 }
+
+
+
 
 fn calculate_yield_to_maturity(
 pv: f64, maturity_val: f64, coupon_interest : f64, payments_per_year : u32, today: &str, next_payment_date : &str, maturity_date : &str) -> Result<f64,&'static str>{
@@ -176,7 +195,7 @@ fn analyze_bonds(name: &str,cost: f64, maturity_val: f64, coupon_interest : f64,
     let now: DateTime<Local> = Local::now();
     let date_str = now.format("%Y-%m-%d").to_string();
     let effective_annual_yield = calculate_yield_to_maturity(cost,maturity_val,coupon_interest,payments_per_year,&date_str,next_payment_date,maturity_date)?;
-    let (pv, total_gain, total_return) = calculate_total_return_no_reinvestment(cost,maturity_val,coupon_interest,payments_per_year,&date_str,next_payment_date,maturity_date)?;
+    let (pv, total_gain, total_return) = calculate_total_return(cost,maturity_val,coupon_interest,None,payments_per_year,&date_str,next_payment_date,maturity_date)?;
     let r#yield = get_current_yield(pv,maturity_val,coupon_interest)?;
     println!("{name} Yield[%]: {yield} YTM[%]: {effective_annual_yield}, present value: {pv}, total gain: {total_gain}, total return: {total_return}");
     Ok(())
@@ -192,7 +211,7 @@ fn main() -> Result<(),&'static str>{
 
 
 //    let effective_annual_yield =  calculate_yield_to_maturity(769.42,1000.0,7.0,2,"2021-08-31","2022-03-01","2036-09-01")?;
-//    let (pv, total_gain, total_return) = calculate_total_return_no_reinvestment(769.42,1000.0,7.0,2,"2020-08-31","2021-03-01","2035-09-01")?;
+//    let (pv, total_gain, total_return) = calculate_total_return(769.42,1000.0,7.0,None,2,"2020-08-31","2021-03-01","2035-09-01")?;
 //    let r#yield = get_current_yield(769.42,1000.0,7.0)?;
 //    println!("Yield[%]: {yield} YTM[%]: {effective_annual_yield}, present value: {pv}, total gain: {total_gain}, total return: {total_return}");
 
@@ -260,8 +279,21 @@ mod tests {
     }
     #[test]
     fn test_calculate_total_return_no_reinvestment() -> Result<(), &'static str> {
-        assert_eq!(calculate_total_return_no_reinvestment(769.42,1000.0,7.0,2,"2020-03-02","2020-09-01","2035-09-01"), Ok((769.42, 1315.58, 2085.0)));
+        assert_eq!(calculate_total_return(769.42,1000.0,7.0,None,2,"2020-03-02","2020-09-01","2035-09-01"), Ok((769.42, 1315.58, 2085.0)));
         Ok(())
     }
+
+    #[test]
+    fn test_calculate_interest_on_interest() -> Result<(), &'static str> {
+        assert_eq!(round(calculate_interest_on_interest(70.0, 10.0, 2, 30)), 1275.36);
+        Ok(())
+    }
+
+    #[test]
+    fn test_round() -> Result<(), &'static str> {
+        assert_eq!(round(1.234567), 1.23);
+        Ok(())
+    }
+
     // sing IOWA state hospitals
 }
