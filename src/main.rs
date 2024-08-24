@@ -2,12 +2,6 @@
 
 use chrono::{Local, NaiveDate, ParseError, DateTime};
 
-fn round(x : f64) -> f64 {
-    (x * 100.0).round() / 100.0
-}
-
-
-
 fn calculate_yield(pv: f64, payments : &Vec<f64>, num_payments_per_year : u32) -> Result<f64,&'static str>{
 
     let rounded_pv = round2(pv);
@@ -285,13 +279,13 @@ mod tests {
 
     #[test]
     fn test_calculate_interest_on_interest() -> Result<(), &'static str> {
-        assert_eq!(round(calculate_interest_on_interest(70.0, 10.0, 2, 30)), 1275.36);
+        assert_eq!(round2(calculate_interest_on_interest(70.0, 10.0, 2, 30)), 1275.36);
         Ok(())
     }
 
     #[test]
     fn test_round() -> Result<(), &'static str> {
-        assert_eq!(round(1.234567), 1.23);
+        assert_eq!(round2(1.234567), 1.23);
         Ok(())
     }
 
