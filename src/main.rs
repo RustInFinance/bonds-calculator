@@ -43,11 +43,18 @@ fn calculate_yield(pv: f64, payments : &Vec<f64>, num_payments_per_year : u32) -
 
 fn calculate_interest_on_interest(annual_annuity : f64, annual_investement_rate : f64, investements_per_year : u32, total_num_investements : u32) -> f64 {
     
+    let interest_on_interest = if annual_investement_rate == 0.0 {
+        0.0
+    } else {
+
     let periodic_annuity = annual_annuity/investements_per_year as f64;
     let periodic_investment_rate = annual_investement_rate/100.0/investements_per_year as f64;
     let total_capital = periodic_annuity*(((1.0 + periodic_investment_rate).powf(total_num_investements as f64) - 1.0)/periodic_investment_rate);
 
     total_capital - periodic_annuity*total_num_investements as f64
+    };
+    log::info!("Interest on interest: {interest_on_interest}");
+    interest_on_interest
 }
 
 
@@ -224,9 +231,9 @@ fn main() -> Result<(),&'static str>{
 
    analyze_bonds("POLAND 5.25% 01/25",1039.3543*1.0025,1000.0,5.25,1,1.35,"2025-01-20","2025-01-20")?;
    analyze_bonds("FINLAND 0.5% 01/26",963.6788*1.0025,1000.0,0.5,1,1.35,"2025-04-15","2026-04-15")?;
-   analyze_bonds("FRANCE 2.5% 05/30",0.9864*1.0025,1.0,2.5,1,1.35,"2025-05-25","2030-05-25")?;
+ analyze_bonds("FRANCE 2.5% 05/30",0.9864*1.0025,1.0,2.5,1,1.35,"2025-05-25","2030-05-25")?;
 
-   analyze_bonds("MERCEDES-BENZ 2.0% 08/26",994.5898*1.0025,1000.0,2.0,1,1.35,"2024-08-22","2026-08-22")?;
+   analyze_bonds("MERCEDES-BENZ 2.0% 08/26",994.5898*1.0025,1000.0,2.0,1,1.35,"2024-08-25","2026-08-25")?;
 
     Ok(())
 }
@@ -287,6 +294,7 @@ mod tests {
 
     #[test]
     fn test_calculate_interest_on_interest() -> Result<(), &'static str> {
+        assert_eq!(round2(calculate_interest_on_interest(4.5, 0.0, 2, 3)), 0.0);
         assert_eq!(round2(calculate_interest_on_interest(70.0, 10.0, 2, 30)), 1275.36);
         Ok(())
     }
