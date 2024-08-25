@@ -133,7 +133,7 @@ pv: f64, maturity_val: f64, coupon_interest : f64, payments_per_year : u32, rein
         // Interest on interest
         total_gain += match reinvestement_rate {
             Some(reinvestement_rate) => 
-                calculate_interest_on_interest(coupon_interest, reinvestement_rate, payments_per_year, payments.len() as u32),
+                calculate_interest_on_interest(coupon_interest*0.85 /* 15% is a tak at source*/, reinvestement_rate, payments_per_year, payments.len() as u32),
             None => 0.0,
         };
         total_gain
