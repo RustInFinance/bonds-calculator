@@ -81,7 +81,12 @@ fn calculate_total_return(pv: f64, maturity_val: f64, coupon_interest : f64, rei
          payments.push(payment_per_period);
     }
     payments.push(maturity_val);
-    let total_return = payments.iter().sum();
+    let mut total_return = payments.iter().sum();
+        total_return += match reinvestment_rate {
+            Some(reinvestement_rate) => 
+                calculate_interest_on_interest(payment_per_period*payments_per_year as f64, reinvestement_rate, payments_per_year, payments.len() as u32),
+            None => 0.0,
+        };
     Ok((pv,total_return - pv,total_return))
 }
 
@@ -89,7 +94,7 @@ fn calculate_total_return(pv: f64, maturity_val: f64, coupon_interest : f64, rei
 
 
 fn calculate_yield_to_maturity(
-pv: f64, maturity_val: f64, coupon_interest : f64, payments_per_year : u32, reinvestement_rate : Option<f64>,today: &str, next_payment_date : &str, maturity_date : &str) -> Result<f64,&'static str>{
+pv: f64, maturity_val: f64, coupon_interest_rate : f64, payments_per_year : u32, reinvestement_rate : Option<f64>,today: &str, next_payment_date : &str, maturity_date : &str) -> Result<f64,&'static str>{
 
     let rounded_pv = round2(pv);
     // min and max 
@@ -115,7 +120,7 @@ pv: f64, maturity_val: f64, coupon_interest : f64, payments_per_year : u32, rein
     let remaining_period_ratio = days_to_next_payment as f64/num_days_in_period as f64;
     log::info!("Days to next payment: {days_to_next_payment} remaining_period_ratio: {remaining_period_ratio}");
 
-    let payment_per_period = maturity_val*coupon_interest/payments_per_year as f64/100.0;
+    let payment_per_period = maturity_val*coupon_interest_rate/payments_per_year as f64/100.0;
 
     for _i in 0..periods_to_mature {
          payments.push(payment_per_period);
@@ -133,7 +138,7 @@ pv: f64, maturity_val: f64, coupon_interest : f64, payments_per_year : u32, rein
         // Interest on interest
         total_gain += match reinvestement_rate {
             Some(reinvestement_rate) => 
-                calculate_interest_on_interest(coupon_interest*0.85 /* 15% is a tak at source*/, reinvestement_rate, payments_per_year, payments.len() as u32),
+                calculate_interest_on_interest(coupon_interest_rate/100.0*maturity_val, reinvestement_rate, payments_per_year, payments.len() as u32),
             None => 0.0,
         };
         total_gain
@@ -204,7 +209,7 @@ fn analyze_bonds(name: &str,cost: f64, maturity_val: f64, coupon_interest : f64,
     let date_str = now.format("%Y-%m-%d").to_string();
     let effective_annual_yield = calculate_yield_to_maturity(cost,maturity_val,coupon_interest,payments_per_year,None,&date_str,next_payment_date,maturity_date)?;
     let promised_annual_yield = calculate_yield_to_maturity(cost,maturity_val,coupon_interest,payments_per_year,Some(reinvestment_rate),&date_str,next_payment_date,maturity_date)?;
-    let (pv, total_gain, total_return) = calculate_total_return(cost,maturity_val,coupon_interest,None,payments_per_year,&date_str,next_payment_date,maturity_date)?;
+    let (pv, total_gain, total_return) = calculate_total_return(cost,maturity_val,coupon_interest,Some(reinvestment_rate),payments_per_year,&date_str,next_payment_date,maturity_date)?;
     let r#yield = get_current_yield(pv,maturity_val,coupon_interest)?;
     println!("{name} Curr Yield[%]: {yield} YTM[%]: {effective_annual_yield}, YTMWR{reinvestment_rate}[%]: {promised_annual_yield} , present value: {pv}, total gain: {total_gain}, total return: {total_return}");
     Ok(())
@@ -219,11 +224,6 @@ fn main() -> Result<(),&'static str>{
     simple_logger::SimpleLogger::new().env().init().unwrap();
 
 
-//    let effective_annual_yield =  calculate_yield_to_maturity(769.42,1000.0,7.0,2,"2021-08-31","2022-03-01","2036-09-01")?;
-//    let (pv, total_gain, total_return) = calculate_total_return(769.42,1000.0,7.0,None,2,"2020-08-31","2021-03-01","2035-09-01")?;
-//    let r#yield = get_current_yield(769.42,1000.0,7.0)?;
-//    println!("Yield[%]: {yield} YTM[%]: {effective_annual_yield}, present value: {pv}, total gain: {total_gain}, total return: {total_return}");
-
    analyze_bonds("US 4.5% 11/25",100.7199+0.25,100.0,4.5,2,0.0,"2024-11-15","2025-11-15")?;
    analyze_bonds("US 4.125% 11/32",100.3882+0.25,100.0,4.14,2,0.0,"2024-11-15","2032-11-15")?;
    analyze_bonds("EURO 0.8% 07/25",0.9791*1.0025,1.0,0.8,1,1.35,"2025-07-4","2025-07-4")?;
@@ -231,9 +231,13 @@ fn main() -> Result<(),&'static str>{
 
    analyze_bonds("POLAND 5.25% 01/25",1039.3543*1.0025,1000.0,5.25,1,1.35,"2025-01-20","2025-01-20")?;
    analyze_bonds("FINLAND 0.5% 01/26",963.6788*1.0025,1000.0,0.5,1,1.35,"2025-04-15","2026-04-15")?;
- analyze_bonds("FRANCE 2.5% 05/30",0.9864*1.0025,1.0,2.5,1,1.35,"2025-05-25","2030-05-25")?;
+   analyze_bonds("FRANCE 2.5% 05/30",0.9864*1.0025,1.0,2.5,1,1.35,"2025-05-25","2030-05-25")?;
 
    analyze_bonds("MERCEDES-BENZ 2.0% 08/26",994.5898*1.0025,1000.0,2.0,1,1.35,"2024-08-25","2026-08-25")?;
+
+   analyze_bonds("ROR 5.75% 08/31",10000.0, 10000.0, 5.75 ,12,3.25,"2024-09-30","2025-08-31")?;
+   analyze_bonds("ROS0830 6.75%",71000.0, 71000.0, 6.75 ,12,6.75,"2024-09-30","2030-08-31")?;
+   analyze_bonds("ROS0830 7.05%",71000.0, 71000.0, 7.05 ,12,7.05,"2024-09-30","2036-08-31")?;
 
     Ok(())
 }
